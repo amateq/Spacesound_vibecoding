@@ -26,6 +26,9 @@ class Star {
 
 		this.synth.volume.value = volume;
 		this.activated = activated;
+		this.twinklePhase = 0; // Начинаем без мерцания
+		this.twinkleSpeed = 0.1 + Math.random() * 0.1;
+		this.hue = Math.random() * 360; // Для цветового переливания
 	}
 }
 
@@ -149,6 +152,7 @@ class StarSystem {
 		this.currentScaleType = 'major';
 		this.tempo = 1;
 		this.orbitDrift = 0.02;
+		this.isStarMapMode = false;
 
 		this.moon = new Moon({
 			radius: 30,
@@ -274,7 +278,33 @@ class StarSystem {
 	
 	drawStars() {
 		for(let star of this.stars) {
-			this.ctx.fillStyle = star.color;
+			let alpha = star.opacity;
+			let twinkle = (Math.sin(star.twinklePhase) + 1) / 2; // 0-1
+
+			if(this.isStarMapMode) {
+				// В режиме звездной карты добавляем заметное мерцание
+				alpha = star.activated ? 0.6 + twinkle * 0.4 : 0.2 + twinkle * 0.6;
+
+				// Рисуем гало
+				let haloRadius = star.width * 3 + twinkle * star.width * 2;
+				let haloAlpha = alpha * 0.3;
+				this.ctx.fillStyle = `rgba(255, 255, 255, ${haloAlpha})`;
+				this.ctx.beginPath();
+				this.ctx.arc(star.x + star.width/2, star.y + star.height/2, haloRadius, 0, Math.PI * 2);
+				this.ctx.fill();
+
+				// Рисуем звезду
+				this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+			} else {
+				// В режиме Flow Mode добавляем мерцание и цветовой перелив
+				let baseAlpha = star.activated ? 0.8 : 0.5;
+				alpha = baseAlpha + twinkle * 0.5; // Более заметное мерцание
+
+				// Цветовой перелив в HSL
+				let saturation = 70 + twinkle * 30;
+				let lightness = 50 + twinkle * 30;
+				this.ctx.fillStyle = `hsla(${star.hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+			}
 			this.ctx.fillRect(star.x, star.y, star.width, star.height);
 		}
 	}
@@ -395,8 +425,20 @@ class StarSystem {
 					star.synth.connect(this.delay);
 					star.synth.triggerAttackRelease(star.pitch, '8n');
 					this.stars[i].activated = true;
+					// Сброс фазы мерцания при активации для синхронизации
+					star.twinklePhase = 0;
+				}
+			} else {
+				// В режиме Flow Mode звезды постепенно тускнеют
+				if(star.opacity > 0.5) {
+					this.stars[i].opacity -= 0.01;
+					star.color = `rgba(255,255,255,${star.opacity})`;
 				}
 			}
+
+			// Обновление мерцания и цвета всегда
+			star.twinklePhase += star.twinkleSpeed * 3; // Ускоренное мерцание
+			star.hue = (star.hue + 2) % 360; // Ускоренное изменение цвета
 
 			this.ctx.fillStyle = star.color;
 			this.ctx.fillRect(star.x, star.y, star.width, star.height);
@@ -430,6 +472,10 @@ let startButton = document.getElementById('start');
 startButton.addEventListener('click', (e)=>{
 	document.getElementById('container').classList.add('disabled');
 	playing = true;
+	// Запускаем мерцание звезд при старте
+	for(let star of system.stars) {
+		star.twinklePhase = Math.random() * Math.PI * 2;
+	}
 	system.run();
 });
 
@@ -487,6 +533,12 @@ document.getElementById('tempoSlider').addEventListener('input', (e) => {
 document.getElementById('orbitDriftSlider').addEventListener('input', (e) => {
 	system.orbitDrift = parseFloat(e.target.value);
 	system.moon.updateSpeed(system.orbitDrift);
+});
+
+document.getElementById('visualizationMode').addEventListener('click', () => {
+	system.isStarMapMode = !system.isStarMapMode;
+	const modeButton = document.getElementById('visualizationMode');
+	modeButton.innerHTML = system.isStarMapMode ? 'Star Map' : 'Flow Mode';
 });
 
 Tone.Master.volume.value = -8;
