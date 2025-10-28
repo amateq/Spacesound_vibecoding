@@ -4,7 +4,7 @@ const mapNumber = (number, in_min, in_max, out_min, out_max) => {
 
 class Star {
 	constructor(options) {
-		let {size, x, y, color, activated, pitch, velocity, pan, volume} = options;
+		let {size, x, y, color, activated, pitch, velocity, pan, volume, waveType} = options;
 		this.width = size;
 		this.height = size;
 		this.x = x;
@@ -20,7 +20,7 @@ class Star {
 
 		this.synth = new Tone.Synth({
 			oscillator: {
-				type: 'sine'
+				type: waveType
 			}
 		}).chain(this.panner);
 
@@ -110,6 +110,7 @@ class StarSystem {
 		this.stars = [];
 		this.scale = new SystemScale(2);
 		this.isSpacePressed = false;
+		this.currentWaveType = 'sine';
 
 		this.moon = new Moon({
 			radius: 30,
@@ -133,7 +134,7 @@ class StarSystem {
 
 		let droneOptions = {
 			oscillator: {
-				type: 'sine2'
+				type: this.currentWaveType
 			},
 			envelope: {
 				attack: 2,
@@ -223,7 +224,8 @@ class StarSystem {
 				pitch: pitch,
 				velocity: velocity,
 				pan: randomPan,
-				volume: computedVolume
+				volume: computedVolume,
+				waveType: this.currentWaveType
 			});
 			
 			this.stars.push(star);
@@ -258,7 +260,8 @@ class StarSystem {
 			pitch: pitch,
 			velocity: velocity,
 			pan: randomPan,
-			volume: computedVolume
+			volume: computedVolume,
+			waveType: this.currentWaveType
 		});
 
 		this.stars.push(star);
@@ -272,6 +275,19 @@ class StarSystem {
 				this.speed -= this.speedIncrement;
 			}
 		}
+	}
+
+	updateWaveType(newType) {
+		this.currentWaveType = newType;
+		// Обновляем тип волны для всех существующих звезд
+		for(let star of this.stars) {
+			star.synth.oscillator.type = newType;
+		}
+		// Обновляем тип волны для дронов
+		this.drone.oscillator.type = newType;
+		this.droneLeft.oscillator.type = newType;
+		this.droneRight.oscillator.type = newType;
+		this.droneTop.oscillator.type = newType;
 	}
 
 	addStarAtPosition(x, y) {
@@ -294,7 +310,8 @@ class StarSystem {
 			pitch: pitch,
 			velocity: velocity,
 			pan: randomPan,
-			volume: computedVolume
+			volume: computedVolume,
+			waveType: this.currentWaveType
 		});
 
 		this.stars.push(star);
@@ -405,6 +422,10 @@ document.addEventListener('keyup', (e) => {
 		e.preventDefault();
 		system.isSpacePressed = false;
 	}
+});
+
+document.getElementById('waveType').addEventListener('change', (e) => {
+	system.updateWaveType(e.target.value);
 });
 
 Tone.Master.volume.value = -8;
