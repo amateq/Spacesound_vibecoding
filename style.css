@@ -131,3 +131,16 @@ body {
 	font-weight: bold;
 	font-family: 'Arial', sans-serif;
 }
+
+.controls__scale {
+	padding: 5px 10px;
+	background-color: #ff0000;
+	color: #fff;
+	border-radius: 3px;
+	cursor: pointer;
+	margin-left: 10px;
+	border: 1px solid #ff0000;
+	font-size: 14px;
+	font-weight: bold;
+	font-family: 'Arial', sans-serif;
+}

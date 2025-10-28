@@ -81,8 +81,34 @@ class Moon {
 }
 
 class SystemScale {
-	constructor(octaves) {
-		this.intervals = [0,2,4,6,7,9,11,12];
+	constructor(octaves, scaleType = 'major') {
+		this.scaleType = scaleType;
+		this.setScale(scaleType);
+		this.notes = [];
+		this.generateNotes(octaves);
+	}
+
+	setScale(scaleType) {
+		this.scaleType = scaleType;
+		switch(scaleType) {
+			case 'major':
+				this.intervals = [0,2,4,5,7,9,11,12];
+				break;
+			case 'minor':
+				this.intervals = [0,2,3,5,7,8,10,12];
+				break;
+			case 'pentatonic':
+				this.intervals = [0,3,5,7,10,12]; // Более заметная пентатоника (минорная)
+				break;
+			case 'blues':
+				this.intervals = [0,3,5,6,7,10,12]; // Блюзовая гамма
+				break;
+			default:
+				this.intervals = [0,2,4,5,7,9,11,12];
+		}
+	}
+
+	generateNotes(octaves) {
 		this.notes = [];
 		for(let i=1; i<=octaves; i++) {
 			for(let j=0; j<this.intervals.length; j++) {
@@ -90,6 +116,11 @@ class SystemScale {
 				this.notes.push((12*i)+48+(number));
 			}
 		}
+	}
+
+	updateScale(scaleType, octaves) {
+		this.setScale(scaleType);
+		this.generateNotes(octaves);
 	}
 }
 
@@ -108,9 +139,10 @@ class StarSystem {
 		this.ctx = null;
 
 		this.stars = [];
-		this.scale = new SystemScale(2);
+		this.scale = new SystemScale(2, 'major');
 		this.isSpacePressed = false;
 		this.currentWaveType = 'sine';
+		this.currentScaleType = 'major';
 
 		this.moon = new Moon({
 			radius: 30,
@@ -204,7 +236,7 @@ class StarSystem {
 			let color = 'rgba(255,255,255,0.5)';
 			let activated = false;
 			
-			let pitchIndex = mapNumber(randomY, 0, this.height, this.scale.notes.length, 0);
+			let pitchIndex = mapNumber(randomY, 0, this.height, this.scale.notes.length - 1, 0);
 			let pitch = this.scale.notes[Math.floor(pitchIndex)];
 			let velocity = mapNumber(randomSize, this.minSize, this.maxSize, 0, 1);
 			
@@ -246,7 +278,7 @@ class StarSystem {
 		let randomSize = Math.random() * (this.maxSize - this.minSize) + this.minSize;
 		let randomPan = Math.random() * (1 - -1) + -1;
 		
-		let pitchIndex = mapNumber(randomY, 0, this.height, this.scale.notes.length, 0);
+		let pitchIndex = mapNumber(randomY, 0, this.height, this.scale.notes.length - 1, 0);
 		let pitch = this.scale.notes[Math.floor(pitchIndex)];
 		let velocity = mapNumber(randomSize, this.minSize, this.maxSize, 0, 1);
 		
@@ -290,13 +322,23 @@ class StarSystem {
 		this.droneTop.oscillator.type = newType;
 	}
 
+	updateScaleType(newType) {
+		this.currentScaleType = newType;
+		this.scale.updateScale(newType, 2);
+		// Пересчитываем ноты для всех существующих звезд
+		for(let star of this.stars) {
+			let pitchIndex = mapNumber(star.y, 0, this.height, this.scale.notes.length - 1, 0);
+			star.pitch = Tone.Midi(this.scale.notes[Math.floor(pitchIndex)]).toFrequency();
+		}
+	}
+
 	addStarAtPosition(x, y) {
 		let randomSize = Math.random() * (this.maxSize - this.minSize) + this.minSize;
 		let randomPan = Math.random() * (1 - -1) + -1;
 
 		let padding = this.height * 0.05;
 		let effectiveHeight = this.height - 2 * padding;
-		let pitchIndex = mapNumber(y, padding, this.height - padding, this.scale.notes.length - 8, 4);
+		let pitchIndex = mapNumber(y, padding, this.height - padding, this.scale.notes.length - 9, 4);
 		let pitch = this.scale.notes[Math.floor(pitchIndex)];
 		let velocity = mapNumber(randomSize, this.minSize, this.maxSize, 0, 1);
 
@@ -426,6 +468,10 @@ document.addEventListener('keyup', (e) => {
 
 document.getElementById('waveType').addEventListener('change', (e) => {
 	system.updateWaveType(e.target.value);
+});
+
+document.getElementById('scaleType').addEventListener('change', (e) => {
+	system.updateScaleType(e.target.value);
 });
 
 Tone.Master.volume.value = -8;
