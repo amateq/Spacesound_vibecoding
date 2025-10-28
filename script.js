@@ -62,6 +62,10 @@ class Moon {
 		this.lfo.max = mapNumber(this.y, 0, this.system.height, -3, 3);
 	}
 
+	updateSpeed(newSpeed) {
+		this.speed = newSpeed;
+	}
+
 	draw(ctx) {
 		ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
 		ctx.beginPath();
@@ -143,13 +147,15 @@ class StarSystem {
 		this.isSpacePressed = false;
 		this.currentWaveType = 'sine';
 		this.currentScaleType = 'major';
+		this.tempo = 1;
+		this.orbitDrift = 0.02;
 
 		this.moon = new Moon({
 			radius: 30,
 			centerX: this.width / 2,
 			centerY: this.height / 2,
 			orbitRadius: Math.min(this.width, this.height) / 4,
-			speed: 0.02,
+			speed: this.orbitDrift,
 			system: this
 		});
 		
@@ -372,7 +378,7 @@ class StarSystem {
 		this.moon.draw(this.ctx);
 
 		for(let i=0; i<this.stars.length; i++) {
-			this.stars[i].x -= this.speed;
+			this.stars[i].x -= this.speed * this.tempo;
 			let star = this.stars[i];
 
 			if(star.x < 0) {
@@ -472,6 +478,15 @@ document.getElementById('waveType').addEventListener('change', (e) => {
 
 document.getElementById('scaleType').addEventListener('change', (e) => {
 	system.updateScaleType(e.target.value);
+});
+
+document.getElementById('tempoSlider').addEventListener('input', (e) => {
+	system.tempo = parseFloat(e.target.value);
+});
+
+document.getElementById('orbitDriftSlider').addEventListener('input', (e) => {
+	system.orbitDrift = parseFloat(e.target.value);
+	system.moon.updateSpeed(system.orbitDrift);
 });
 
 Tone.Master.volume.value = -8;
