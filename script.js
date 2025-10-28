@@ -12,20 +12,71 @@ class Star {
 		this.color = color;
 		this.pan = pan;
 		this.opacity = 0.5;
-		
+
 		this.pitch = Tone.Midi(pitch).toFrequency();
 		this.velocity = velocity;
-		
+
 		this.panner = new Tone.Panner(this.pan).toMaster();
-		
+
 		this.synth = new Tone.Synth({
 			oscillator: {
 				type: 'sine'
 			}
 		}).chain(this.panner);
-		
+
 		this.synth.volume.value = volume;
 		this.activated = activated;
+	}
+}
+
+class Moon {
+	constructor(options) {
+		let {radius, centerX, centerY, orbitRadius, speed, system} = options;
+		this.radius = radius;
+		this.centerX = centerX;
+		this.centerY = centerY;
+		this.orbitRadius = orbitRadius;
+		this.speed = speed;
+		this.angle = 0;
+		this.system = system;
+
+		this.x = this.centerX + Math.cos(this.angle) * this.orbitRadius;
+		this.y = this.centerY + Math.sin(this.angle) * this.orbitRadius;
+
+		this.lfo = new Tone.LFO({
+			frequency: 0.5,
+			min: -6,
+			max: 6
+		}).connect(Tone.Master.volume);
+
+		this.lfo.start();
+	}
+
+	updatePosition() {
+		this.angle += this.speed;
+		this.x = this.centerX + Math.cos(this.angle) * this.orbitRadius;
+		this.y = this.centerY + Math.sin(this.angle) * this.orbitRadius;
+
+		this.lfo.frequency.value = mapNumber(this.x, 0, this.system.width, 0.1, 2);
+		this.lfo.min = mapNumber(this.y, 0, this.system.height, -12, -3);
+		this.lfo.max = mapNumber(this.y, 0, this.system.height, -3, 3);
+	}
+
+	draw(ctx) {
+		ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+		ctx.beginPath();
+		ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+		ctx.fill();
+
+		ctx.fillStyle = 'rgba(220, 220, 220, 0.7)';
+		ctx.beginPath();
+		ctx.arc(this.x - this.radius * 0.3, this.y - this.radius * 0.3, this.radius * 0.4, 0, Math.PI * 2);
+		ctx.fill();
+
+		ctx.fillStyle = 'rgba(180, 180, 180, 0.5)';
+		ctx.beginPath();
+		ctx.arc(this.x + this.radius * 0.2, this.y - this.radius * 0.2, this.radius * 0.3, 0, Math.PI * 2);
+		ctx.fill();
 	}
 }
 
@@ -59,6 +110,15 @@ class StarSystem {
 		this.stars = [];
 		this.scale = new SystemScale(2);
 		this.isSpacePressed = false;
+
+		this.moon = new Moon({
+			radius: 30,
+			centerX: this.width / 2,
+			centerY: this.height / 2,
+			orbitRadius: Math.min(this.width, this.height) / 4,
+			speed: 0.02,
+			system: this
+		});
 		
 		this.filter = new Tone.Filter({
 			type: 'lowpass',
@@ -248,6 +308,9 @@ class StarSystem {
 		this.ctx.fillRect(0,0,this.width,this.height);
 
 		this.drawMidPoint();
+
+		this.moon.updatePosition();
+		this.moon.draw(this.ctx);
 
 		for(let i=0; i<this.stars.length; i++) {
 			this.stars[i].x -= this.speed;
